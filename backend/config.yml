@@ -1,0 +1,25 @@
+llm:
+  provider: "openai"          # 개발/MVP
+  model: "gpt-4o-mini"
+  # provider: "claude"        # 발표용 (claude-sonnet-4-20250514)
+  # model: "claude-sonnet-4-20250514"
+  # provider: "ollama"        # 오프라인 데모용
+  # model: "llama3"
+
+services:
+  prometheus_url: "http://prometheus:9090"
+  grafana_url: "http://grafana:3000"
+  grafana_user: "admin"
+  grafana_password: "admin123"
+  elasticsearch_url: "http://elasticsearch:9200"
+  alertmanager_url: "http://alertmanager:9093"
+  redis_url: "redis://redis:6379"
+  langfuse_host: "http://langfuse:3000"
+
+security:
+  allowed_actions:
+    - create_monitoring_target
+    - create_alert_rule
+    - import_dashboard
+    - search_logs
+    - summarize_alerts

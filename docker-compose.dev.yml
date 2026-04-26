@@ -1,0 +1,26 @@
+# 개발 환경 오버라이드 - docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Backend는 호스트에서 직접 실행: cd backend && uvicorn main:app --reload
+version: '3.8'
+
+services:
+  grafana:
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Editor   # 개발 시 대시보드 직접 편집
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_EXPLORE_ENABLED=true
+      - GF_LOG_LEVEL=warn
+
+  elasticsearch:
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+      - xpack.security.enabled=false
+      - logger.level=WARN
+
+  # Backend는 호스트에서 직접 실행 시 이 서비스를 비활성화
+  backend:
+    profiles:
+      - docker-backend   # docker compose --profile docker-backend up 으로만 기동
