@@ -5,15 +5,22 @@ receivers:
         endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins: ["*"]   # AWS 외부 서비스 Push 수신 허용
 
 processors:
   batch:
-    timeout: 1s
+    timeout: 5s
     send_batch_size: 1024
   memory_limiter:
     limit_mib: 512
     spike_limit_mib: 128
     check_interval: 5s
+  resource:
+    attributes:
+      - key: environment
+        action: upsert
+        from_attribute: env
 
 exporters:
   prometheus:
@@ -46,12 +53,12 @@ service:
 
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
+      processors: [memory_limiter, resource, batch]
       exporters: [otlp/tempo]
 
     logs:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
+      processors: [memory_limiter, resource, batch]
       exporters: [elasticsearch]
 
   telemetry:

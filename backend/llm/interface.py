@@ -8,8 +8,13 @@ class LLMProvider(ABC):
         self,
         messages: list[dict],
         tools: list[dict],
+        force_tool: str | None = None,
     ) -> dict:
-        """Function Calling 실행. 반환: {"type": "function_call"|"text", ...}"""
+        """
+        Function Calling 실행. 반환: {"type": "function_call"|"text", ...}
+        force_tool: 툴 이름을 지정하면 LLM이 반드시 해당 툴을 호출 (tool_choice 강제).
+        Intent가 확정된 경우 LLM이 임의로 텍스트 응답하는 것을 방지한다.
+        """
         ...
 
     @abstractmethod

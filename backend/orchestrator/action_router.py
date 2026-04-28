@@ -6,11 +6,42 @@ from intent.classifier import ClassifiedIntent, IntentType
 TOOLS: list[dict] = [
     {
         "name": "create_monitoring_target",
-        "description": "Prometheus 모니터링 대상 추가",
+        "description": (
+            "모니터링 대상 추가. 로컬 서비스(Prometheus Pull)와 "
+            "AWS 외부 서비스(EC2/ECS/Lambda, OTel Push) 모두 지원. "
+            "AWS 서비스는 ngrok 터널 URL과 연동 가이드를 자동 생성한다."
+        ),
         "parameters": {
-            "host": "string",
-            "port": "number",
-            "job_name": "string",
+            "type": "object",
+            "properties": {
+                "service_name": {
+                    "type": "string",
+                    "description": "서비스 이름 (예: order-service, user-api)",
+                },
+                "service_type": {
+                    "type": "string",
+                    "enum": ["local", "aws-ec2", "aws-ecs", "aws-lambda"],
+                    "description": "서비스 배포 환경",
+                },
+                "endpoint": {
+                    "type": "string",
+                    "description": (
+                        "local 전용: Prometheus 스크레이프 URL (예: http://host:port/metrics). "
+                        "aws 서비스는 ngrok URL이 자동 설정되므로 생략 가능."
+                    ),
+                },
+                "environment": {
+                    "type": "string",
+                    "enum": ["dev", "staging", "production"],
+                    "description": "배포 환경 구분",
+                },
+                "integration_method": {
+                    "type": "string",
+                    "enum": ["otel-sdk", "fluent-bit", "prometheus-exporter"],
+                    "description": "연동 방식 (생략 시 otel-sdk 기본값)",
+                },
+            },
+            "required": ["service_name", "service_type", "environment"],
         },
     },
     {
@@ -49,6 +80,13 @@ TOOLS: list[dict] = [
             "service": "string",
         },
     },
+    {
+        "name": "list_monitoring_targets",
+        "description": "현재 Prometheus에 등록된 모니터링 대상 목록과 UP/DOWN 상태 조회. '연동된 서비스 목록', '모니터링 중인 서비스', '현황' 등의 요청에 사용.",
+        "parameters": {
+            "service_filter": "string",
+        },
+    },
 ]
 
 _TOOLS_BY_NAME: dict[str, dict] = {t["name"]: t for t in TOOLS}
@@ -60,6 +98,7 @@ _INTENT_TO_TOOL: dict[IntentType, str] = {
     IntentType.IMPORT_DASHBOARD: "import_dashboard",
     IntentType.SEARCH_LOGS: "search_logs",
     IntentType.SUMMARIZE_ALERTS: "summarize_alerts",
+    IntentType.LIST_MONITORING_TARGETS: "list_monitoring_targets",
 }
 
 

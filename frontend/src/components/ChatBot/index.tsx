@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 
 interface Message {
   id: string
@@ -216,11 +217,39 @@ export default function ChatBot({ onDashboardCreated }: Props) {
                 fontSize: 14,
                 lineHeight: '22.75px',
                 fontFamily: "'Inter', 'Noto Sans KR', sans-serif",
-                whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
               }}
             >
-              {msg.content || (isStreaming && i === messages.length - 1 ? '▋' : '')}
+              {msg.role === 'user' ? (
+                <span style={{ whiteSpace: 'pre-wrap' }}>
+                  {msg.content}
+                </span>
+              ) : msg.content ? (
+                <ReactMarkdown
+                  components={{
+                    p: ({ children }) => <p style={{ margin: '0 0 8px 0' }}>{children}</p>,
+                    h3: ({ children }) => <h3 style={{ margin: '12px 0 4px', fontSize: 14, fontWeight: 700 }}>{children}</h3>,
+                    h4: ({ children }) => <h4 style={{ margin: '8px 0 2px', fontSize: 13, fontWeight: 600 }}>{children}</h4>,
+                    code: ({ children, className }) => {
+                      const isBlock = className?.includes('language-')
+                      return isBlock ? (
+                        <code style={{ display: 'block', background: '#1e1e2e', color: '#cdd6f4', padding: '10px 12px', borderRadius: 8, fontSize: 12, overflowX: 'auto', whiteSpace: 'pre', fontFamily: 'monospace', margin: '6px 0' }}>{children}</code>
+                      ) : (
+                        <code style={{ background: '#e5e7eb', color: '#374151', padding: '1px 5px', borderRadius: 4, fontSize: 12, fontFamily: 'monospace' }}>{children}</code>
+                      )
+                    },
+                    pre: ({ children }) => <pre style={{ margin: 0 }}>{children}</pre>,
+                    ul: ({ children }) => <ul style={{ margin: '4px 0', paddingLeft: 18 }}>{children}</ul>,
+                    li: ({ children }) => <li style={{ marginBottom: 2 }}>{children}</li>,
+                    strong: ({ children }) => <strong style={{ fontWeight: 700 }}>{children}</strong>,
+                    hr: () => <hr style={{ border: 'none', borderTop: '1px solid #d1d5db', margin: '8px 0' }} />,
+                  }}
+                >
+                  {msg.content}
+                </ReactMarkdown>
+              ) : (
+                isStreaming && i === messages.length - 1 ? <span>▋</span> : null
+              )}
             </div>
 
             {/* Timestamp */}

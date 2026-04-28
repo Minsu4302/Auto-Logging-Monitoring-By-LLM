@@ -166,6 +166,21 @@ services:
       - monitoring
     restart: unless-stopped
 
+  # ── ngrok (외부 서비스 → OTel Collector Push용 터널) ─────────────────────────
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: ngrok
+    restart: unless-stopped
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    command: http otel-collector:4318
+    ports:
+      - "4040:4040"   # ngrok 대시보드 (터널 URL 확인)
+    depends_on:
+      - otel-collector
+    networks:
+      - monitoring
+
   # ── Fluent Bit (로그 수집·전처리) ───────────────────────────────────────────
   fluent-bit:
     image: fluent/fluent-bit:3.0

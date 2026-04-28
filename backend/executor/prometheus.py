@@ -34,6 +34,45 @@ class PrometheusExecutor:
             resp.raise_for_status()
             return resp.json()
 
+    async def get_targets(self, service_filter: str | None = None) -> dict:
+        """Prometheus /api/v1/targets 로 현재 스크레이프 대상 목록과 UP/DOWN 상태 반환."""
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"{self.base_url}/api/v1/targets")
+            resp.raise_for_status()
+            data = resp.json()
+
+        active_targets = data.get("data", {}).get("activeTargets", [])
+
+        targets = []
+        for t in active_targets:
+            job = t.get("labels", {}).get("job", "unknown")
+            instance = t.get("labels", {}).get("instance", "unknown")
+            health = t.get("health", "unknown")
+            last_scrape = t.get("lastScrape", "")[:19].replace("T", " ")  # ISO → 읽기 쉬운 포맷
+            last_error = t.get("lastError", "")
+
+            if service_filter and service_filter.lower() not in job.lower():
+                continue
+
+            targets.append({
+                "job": job,
+                "instance": instance,
+                "health": health,
+                "last_scrape": last_scrape,
+                "last_error": last_error,
+            })
+
+        up_count = sum(1 for t in targets if t["health"] == "up")
+        down_count = len(targets) - up_count
+
+        return {
+            "total": len(targets),
+            "up": up_count,
+            "down": down_count,
+            "targets": targets,
+            "message": f"모니터링 대상 {len(targets)}개 (UP: {up_count}, DOWN: {down_count})",
+        }
+
     async def create_alert_rule(
         self,
         metric: str,

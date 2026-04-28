@@ -1,8 +1,27 @@
 import os
+from pathlib import Path
 
 import yaml
+from dotenv import load_dotenv
 
 from .interface import LLMProvider
+
+
+def _load_env() -> None:
+    base_dir = Path(__file__).resolve().parent
+    candidates = [
+        base_dir / ".env",
+        base_dir.parent / ".env",
+        base_dir.parent.parent / ".env",
+    ]
+    for path in candidates:
+        if path.exists():
+            load_dotenv(path)
+            return
+    load_dotenv()
+
+
+_load_env()
 
 
 def get_provider(config_path: str | None = None) -> LLMProvider:

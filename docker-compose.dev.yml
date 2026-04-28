@@ -1,6 +1,5 @@
 # 개발 환경 오버라이드 - docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 # Backend는 호스트에서 직접 실행: cd backend && uvicorn main:app --reload
-version: '3.8'
 
 services:
   grafana:

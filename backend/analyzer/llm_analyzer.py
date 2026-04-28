@@ -47,6 +47,37 @@ class LLMAnalyzer:
             chunks.append(chunk)
         return "".join(chunks)
 
+    async def summarize_targets(self, target_data: dict, query: str) -> str:
+        targets = target_data.get("targets", [])
+        if not targets:
+            return "현재 Prometheus에 등록된 모니터링 대상이 없습니다."
+
+        target_lines = "\n".join(
+            f"- {t['job']} ({t['instance']}): {t['health'].upper()}"
+            + (f" | 마지막 스크레이프: {t['last_scrape']}" if t["last_scrape"] else "")
+            + (f" | 오류: {t['last_error']}" if t["last_error"] else "")
+            for t in targets
+        )
+
+        messages = [
+            {
+                "role": "user",
+                "content": (
+                    "당신은 시스템 모니터링 전문가입니다. "
+                    "Prometheus 모니터링 대상 현황을 운영자가 한눈에 파악할 수 있도록 "
+                    "한국어로 요약해주세요. DOWN 상태 서비스가 있으면 강조해주세요.\n\n"
+                    f"질문: {query}\n\n"
+                    f"전체 {target_data['total']}개 대상 (UP: {target_data['up']}, DOWN: {target_data['down']}):\n"
+                    f"{target_lines}"
+                ),
+            }
+        ]
+
+        chunks: list[str] = []
+        async for chunk in self.llm.stream(messages):
+            chunks.append(chunk)
+        return "".join(chunks)
+
     async def analyze_failure(self, context: dict) -> str:
         messages = [
             {

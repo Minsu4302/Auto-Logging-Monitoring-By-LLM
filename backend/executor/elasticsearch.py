@@ -39,13 +39,18 @@ class ElasticsearchExecutor:
             "size": size,
         }
         if group_by:
-            body["aggs"] = {"group": {"terms": {"field": group_by, "size": 20}}}
+            agg_field = group_by if "." in group_by else f"{group_by}.keyword"
+            body["aggs"] = {"group": {"terms": {"field": agg_field, "size": 20}}}
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
-                f"{self.base_url}/logs/_search",
+                f"{self.base_url}/logs*/_search",
                 json=body,
                 headers={"Content-Type": "application/json"},
+                params={
+                    "ignore_unavailable": "true",
+                    "allow_no_indices": "true",
+                },
             )
             resp.raise_for_status()
             result = resp.json()

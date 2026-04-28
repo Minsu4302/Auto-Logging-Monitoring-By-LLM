@@ -7,14 +7,16 @@ llm:
   # model: "llama3"
 
 services:
-  prometheus_url: "http://prometheus:9090"
-  grafana_url: "http://grafana:3000"
+  # Docker 내부 실행 시: http://prometheus:9090, redis://redis:6379, http://langfuse:3000
+  # 로컬 직접 실행 시(개발): 아래 localhost 값 사용
+  prometheus_url: "http://localhost:9090"
+  grafana_url: "http://localhost:3001"
   grafana_user: "admin"
   grafana_password: "admin123"
-  elasticsearch_url: "http://elasticsearch:9200"
-  alertmanager_url: "http://alertmanager:9093"
-  redis_url: "redis://redis:6379"
-  langfuse_host: "http://langfuse:3000"
+  elasticsearch_url: "http://localhost:9200"
+  alertmanager_url: "http://localhost:9093"
+  redis_url: "redis://localhost:6380"
+  langfuse_host: "http://localhost:3002"
 
 security:
   allowed_actions:
