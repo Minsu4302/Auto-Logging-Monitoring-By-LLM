@@ -215,7 +215,7 @@ OTel Collector가 수집하는 실제 ES 필드명:
 
 ### 서비스 대시보드 — magambell-dev
 
-![magambell-dev Service Overview](docs/screenshots/service_dashboard.png)
+[LLM_ServiceDashboard.pdf](https://github.com/user-attachments/files/27982905/LLM_ServiceDashboard.pdf)
 
 - **Request Rate**: `/api/v1/order`, `/api/v1/store` 등 실제 API 엔드포인트별 요청 수
 - **Error Rate**: 4xx/5xx 응답 실시간 추적
@@ -225,7 +225,7 @@ OTel Collector가 수집하는 실제 ES 필드명:
 
 ### EC2 Host 대시보드
 
-![EC2 Host Metrics](docs/screenshots/ec2_host_dashboard.png)
+<img width="1920" height="1098" alt="image" src="https://github.com/user-attachments/assets/4d7af6e9-52cf-409d-bd94-cf3720d5a8ea" />
 
 - OTel Collector hostmetrics receiver로 수집
 - EC2 기본 디스크: `xvda` / `xvda1`
@@ -233,12 +233,14 @@ OTel Collector가 수집하는 실제 ES 필드명:
 
 ### 자연어 대시보드 편집
 
-![Dashboard Modification](docs/screenshots/modify_dashboard.png)
+<img width="1919" height="906" alt="스크린샷 2026-05-19 120509" src="https://github.com/user-attachments/assets/5c44caa4-7144-43a1-b633-aba9af99f2fd" />
 
 "magambell-dev (node) 대시보드에 디스크 IOPS 패널 추가해줘"  
 → Prometheus 메트릭 자동 탐색 → `otel_system_disk_operations_total` 보정 → 패널 추가
 
 ### 알림 규칙 생성
+
+<img width="1919" height="903" alt="스크린샷 2026-05-19 114829" src="https://github.com/user-attachments/assets/742c2622-3aee-4a1d-b1b8-b59f899713de" />
 
 "magambell-dev 서비스 CPU 사용률 80% 넘으면 warning 알림 만들어줘"  
 → Prometheus alert rule 자동 생성 완료
