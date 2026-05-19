@@ -215,7 +215,7 @@ OTel Collector가 수집하는 실제 ES 필드명:
 
 ### 서비스 대시보드 — magambell-dev
 
-[LLM_ServiceDashboard.pdf](https://github.com/user-attachments/files/27982905/LLM_ServiceDashboard.pdf)
+<img width="951" height="542" alt="image" src="https://github.com/user-attachments/assets/fbb599e1-c46a-4564-aed1-7509f0bb4fc4" />
 
 - **Request Rate**: `/api/v1/order`, `/api/v1/store` 등 실제 API 엔드포인트별 요청 수
 - **Error Rate**: 4xx/5xx 응답 실시간 추적
