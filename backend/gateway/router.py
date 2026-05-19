@@ -18,7 +18,10 @@ _CACHEABLE_ACTIONS = {"search_logs", "summarize_alerts"}
 
 
 def _load_config() -> dict:
-    path = os.path.join(os.path.dirname(__file__), "..", "config.yml")
+    env = os.getenv("APP_ENV", "local")
+    base_dir = os.path.join(os.path.dirname(__file__), "..")
+    candidate = os.path.join(base_dir, f"config.{env}.yml")
+    path = candidate if os.path.exists(candidate) else os.path.join(base_dir, "config.yml")
     with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
@@ -28,6 +31,11 @@ def _get_llm():
     return get_provider()
 
 
+def _resolve(cfg_val: str, env_key: str) -> str:
+    """환경변수가 설정된 경우 config.yml 값보다 우선 적용 (Docker 배포 지원)."""
+    return os.getenv(env_key, cfg_val)
+
+
 def _get_executors(cfg: dict) -> dict:
     svc = cfg["services"]
     from executor.alertmanager import AlertmanagerExecutor
@@ -35,21 +43,31 @@ def _get_executors(cfg: dict) -> dict:
     from executor.grafana import GrafanaExecutor
     from executor.prometheus import PrometheusExecutor
 
+    prometheus_url = _resolve(svc["prometheus_url"], "PROMETHEUS_URL")
+    grafana_url    = _resolve(svc["grafana_url"],    "GRAFANA_URL")
+    es_url         = _resolve(svc.get("elasticsearch_url", ""), "ELASTICSEARCH_URL")
+    am_url         = _resolve(svc.get("alertmanager_url", ""),  "ALERTMANAGER_URL")
+
     return {
-        "prometheus": PrometheusExecutor(svc["prometheus_url"]),
-        "grafana": GrafanaExecutor(
-            svc["grafana_url"],
-            svc["grafana_user"],
-            svc["grafana_password"],
+        "prometheus": PrometheusExecutor(
+            prometheus_url,
+            read_only=cfg.get("read_only", False),
         ),
-        "elasticsearch": ElasticsearchExecutor(svc["elasticsearch_url"]),
-        "alertmanager": AlertmanagerExecutor(svc["alertmanager_url"]),
+        "grafana": GrafanaExecutor(
+            grafana_url,
+            os.getenv("GRAFANA_USER",     svc["grafana_user"]),
+            os.getenv("GRAFANA_PASSWORD", svc["grafana_password"]),
+            prometheus_url=prometheus_url,
+        ),
+        "elasticsearch": ElasticsearchExecutor(es_url),
+        "alertmanager": AlertmanagerExecutor(am_url, prometheus_url=prometheus_url),
     }
 
 
 def _get_cache(cfg: dict):
     from cache.semantic_cache import SemanticCache
-    return SemanticCache(redis_url=cfg["services"]["redis_url"])
+    redis_url = _resolve(cfg["services"]["redis_url"], "REDIS_URL")
+    return SemanticCache(redis_url=redis_url)
 
 
 def _get_arq_settings(cfg: dict) -> RedisSettings:
@@ -118,6 +136,14 @@ async def _execute_action(name: str, args: dict, executors: dict) -> dict:
         return await executors["grafana"].import_dashboard(
             dashboard_type=args.get("dashboard_type", "service"),
             service_name=args.get("service_name", "default"),
+        )
+    if name == "modify_dashboard":
+        return await executors["grafana"].modify_dashboard(
+            action=args.get("action", "add"),
+            dashboard_name=args.get("dashboard_name", ""),
+            panel_title=args.get("panel_title", ""),
+            metric_expr=args.get("metric_expr"),
+            legend=args.get("legend"),
         )
     if name == "search_logs":
         return await executors["elasticsearch"].search_logs(
@@ -398,6 +424,72 @@ async def get_analysis_result(job_id: str):
 # ─────────────────────────────────────────────
 # GET /analyze/{job_id}/stream  (SSE: 완료 시 결과 push)
 # ─────────────────────────────────────────────
+
+# ─────────────────────────────────────────────
+# GET /health/services  (SSH 터널 및 서비스 연결 상태 확인)
+# ─────────────────────────────────────────────
+
+@router.get("/health/services")
+async def health_services():
+    """설정된 외부 서비스 연결 상태를 일괄 점검. SSH 터널 활성 여부 확인에 활용."""
+    import time
+
+    cfg = _load_config()
+    svc = cfg["services"]
+    environment = cfg.get("environment", "local")
+    read_only = cfg.get("read_only", False)
+
+    async def _check(url: str, path: str = "/") -> tuple[bool, str]:
+        if not url:
+            return False, "not_configured"
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                resp = await client.get(f"{url}{path}")
+                return resp.status_code < 500, f"http_{resp.status_code}"
+        except Exception as exc:
+            return False, str(exc)[:60]
+
+    import asyncio
+    import httpx
+
+    results = await asyncio.gather(
+        _check(_resolve(svc["prometheus_url"], "PROMETHEUS_URL"), "/-/healthy"),
+        _check(_resolve(svc["grafana_url"], "GRAFANA_URL"), "/api/health"),
+        _check(_resolve(svc.get("elasticsearch_url", ""), "ELASTICSEARCH_URL"), "/"),
+        _check(_resolve(svc.get("alertmanager_url", ""), "ALERTMANAGER_URL"), "/-/healthy"),
+        return_exceptions=True,
+    )
+
+    checks = {
+        "prometheus": results[0],
+        "grafana": results[1],
+        "elasticsearch": results[2],
+        "alertmanager": results[3],
+    }
+
+    services = {}
+    for name, result in checks.items():
+        if isinstance(result, Exception):
+            services[name] = {"ok": False, "detail": str(result)[:60]}
+        else:
+            ok, detail = result
+            services[name] = {"ok": ok, "detail": detail}
+
+    all_required_ok = services["prometheus"]["ok"] and services["grafana"]["ok"]
+
+    return {
+        "environment": environment,
+        "read_only": read_only,
+        "tunnel_required": environment == "production",
+        "all_required_ok": all_required_ok,
+        "services": services,
+        "hint": (
+            "로컬 docker-compose 스택이 실행 중인지 확인하세요.\n"
+            "EC2 Prod 앱은 ngrok URL로 OTel 데이터를 Push해야 합니다:\n"
+            "  OTEL_EXPORTER_OTLP_ENDPOINT=https://<ngrok-url>"
+        ) if environment == "production" else None,
+    }
+
 
 @router.get("/analyze/{job_id}/stream")
 async def stream_analysis_result(job_id: str):

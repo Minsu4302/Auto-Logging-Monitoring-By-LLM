@@ -1,0 +1,45 @@
+receivers:
+  hostmetrics:
+    collection_interval: 30s
+    scrapers:
+      cpu:
+        metrics:
+          system.cpu.utilization:
+            enabled: true
+      memory:
+        metrics:
+          system.memory.utilization:
+            enabled: true
+      disk: {}
+      filesystem:
+        metrics:
+          system.filesystem.utilization:
+            enabled: true
+      network: {}
+      load: {}
+      processes: {}
+
+processors:
+  batch:
+    timeout: 10s
+  resource:
+    attributes:
+      - key: service.name
+        value: "ec2-host"
+        action: upsert
+      - key: host.environment
+        value: "production"
+        action: upsert
+
+exporters:
+  otlphttp:
+    endpoint: "${NGROK_URL}"   # 실행 시 환경변수로 주입
+    tls:
+      insecure: false
+
+service:
+  pipelines:
+    metrics:
+      receivers: [hostmetrics]
+      processors: [resource, batch]
+      exporters: [otlphttp]

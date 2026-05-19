@@ -2,19 +2,38 @@ import httpx
 
 
 class PrometheusExecutor:
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, read_only: bool = False):
         self.base_url = base_url.rstrip("/")
+        self.read_only = read_only
 
     async def add_scrape_target(self, host: str, port: int, job_name: str) -> dict:
         """
-        Prometheus HTTP API로 현재 설정 확인 후 /-/reload 트리거.
-        실제 scrape_config 파일 수정은 executor가 아닌 별도 config 관리로 처리.
+        Prometheus scrape 대상 추가.
+        read_only=True (prod 환경)이면 /-/reload를 호출하지 않고
+        운영자가 직접 적용해야 할 설정 가이드만 반환한다.
         """
+        if self.read_only:
+            return {
+                "status": "readonly",
+                "job_name": job_name,
+                "target": f"{host}:{port}",
+                "message": (
+                    f"[Prod 읽기 전용] Prometheus 설정 변경이 차단되었습니다.\n\n"
+                    f"아래 설정을 EC2의 prometheus.yml에 직접 추가한 후 Prometheus를 재시작하세요:\n\n"
+                    f"```yaml\n"
+                    f"- job_name: '{job_name}'\n"
+                    f"  static_configs:\n"
+                    f"    - targets: ['{host}:{port}']\n"
+                    f"```\n\n"
+                    f"적용 명령: `sudo systemctl reload prometheus` 또는 `curl -X POST http://localhost:9090/-/reload`"
+                ),
+            }
+
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(f"{self.base_url}/api/v1/status/config")
             resp.raise_for_status()
 
-        # /-/reload 는 --web.enable-lifecycle 옵션 필요 (docker-compose에 설정됨)
+        # /-/reload 는 --web.enable-lifecycle 옵션 필요
         async with httpx.AsyncClient(timeout=10.0) as client:
             await client.post(f"{self.base_url}/-/reload")
 

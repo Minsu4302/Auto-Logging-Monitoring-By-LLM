@@ -69,9 +69,34 @@ export default function GrafanaEmbed({ dashboardUrl, title }: Props) {
     )
   }
 
-  const embedUrl = dashboardUrl.startsWith('http')
-    ? `${dashboardUrl}?orgId=1&kiosk=tv&refresh=30s`
-    : `${GRAFANA_BASE}${dashboardUrl}?orgId=1&kiosk=tv&refresh=30s`
+  const buildEmbedUrl = (input: string) => {
+    let resolved = input
+    if (input.startsWith('http')) {
+      try {
+        const parsed = new URL(input)
+        const base = new URL(GRAFANA_BASE)
+        if (parsed.hostname === 'grafana') {
+          resolved = `${base.origin}${parsed.pathname}`
+        }
+      } catch {
+        resolved = input
+      }
+    } else {
+      resolved = `${GRAFANA_BASE}${input}`
+    }
+
+    try {
+      const url = new URL(resolved)
+      url.searchParams.set('orgId', '1')
+      url.searchParams.set('kiosk', 'tv')
+      url.searchParams.set('refresh', '30s')
+      return url.toString()
+    } catch {
+      return resolved
+    }
+  }
+
+  const embedUrl = buildEmbedUrl(dashboardUrl)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

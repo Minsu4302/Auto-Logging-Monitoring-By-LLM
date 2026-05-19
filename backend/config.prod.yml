@@ -1,14 +1,16 @@
 llm:
-  provider: "openai"          # 개발/MVP
+  provider: "openai"
   model: "gpt-4o-mini"
-  # provider: "claude"        # 발표용 (claude-sonnet-4-20250514)
+  # provider: "claude"
   # model: "claude-sonnet-4-20250514"
-  # provider: "ollama"        # 오프라인 데모용
-  # model: "llama3"
+
+# OTel Push 아키텍처:
+#   EC2 Prod 앱 → OTel SDK (OTLP) → ngrok 공개 URL → 로컬 OTel Collector
+#   → 로컬 Prometheus / Elasticsearch / Grafana / Alertmanager
+#
+# 모니터링 스택은 항상 로컬에서 실행. Prod 앱이 ngrok을 통해 Push.
 
 services:
-  # Docker 내부 실행 시: http://prometheus:9090, redis://redis:6379, http://langfuse:3000
-  # 로컬 직접 실행 시(개발): 아래 localhost 값 사용
   prometheus_url: "http://localhost:9090"
   grafana_url: "http://localhost:3001"
   grafana_user: "admin"
@@ -17,6 +19,10 @@ services:
   alertmanager_url: "http://localhost:9093"
   redis_url: "redis://localhost:6380"
   langfuse_host: "http://localhost:3002"
+
+# Prod 환경 식별자 — OTel 라벨 필터링(env=production) 및 통합 가이드 생성에 사용
+environment: "production"
+read_only: false
 
 security:
   allowed_actions:
